@@ -8,7 +8,7 @@ function element(tag, attrs, children) {
  attrs = attrs || {};
  const dataset = {};
  for (const [key, value] of Object.entries(attrs)) if (key.startsWith('data-')) dataset[key.slice(5)] = value;
- return { tag, attrs, children, dataset, value: attrs.value || '', checked: !!attrs.checked, disabled: !!attrs.disabled };
+ return { tag, attrs, children, dataset, value: attrs.value || '', checked: Object.hasOwn(attrs, 'checked') && attrs.checked != null, disabled: !!attrs.disabled };
 }
 function descendants(node) {
  if (!node || typeof node !== 'object') return [];

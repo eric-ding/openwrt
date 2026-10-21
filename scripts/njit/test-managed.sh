@@ -14,5 +14,7 @@ cc "${flags[@]}" '-DNJIT_RUNDIR="/tmp/njit-runtime-test"' "$tests/runtime-test.c
 sudo unshare --net "$out/credentials-test"
 "$out/frames-test"
 sudo unshare --net "$out/runtime-test"
+cc "${flags[@]}" '-DNJIT_RUNDIR="/tmp/njit-policy-runtime"' '-DNJIT_CONFIG_DIR="/tmp/njit-policy-config"' '-DNJIT_CARRIER="/tmp/njit-policy-config/carrier"' "$tests/policy-test.c" "$src/njit_runtime.c" "$src/njit_options.c" -ljson-c -o "$out/policy-test"
+sudo timeout 15 unshare --net "$out/policy-test"
 # Compile main, even though it is not linked into the fixture binaries.
 cc "${flags[@]}" -c "$src/main.c" -o "$out/main.o"

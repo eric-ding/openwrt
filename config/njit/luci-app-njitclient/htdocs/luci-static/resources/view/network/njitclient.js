@@ -45,7 +45,7 @@ return view.extend({
 	handleReset: null,
 	load: function() { return Promise.all([getSettings().then(checked), getStatus().then(checked)]); },
 	writable: function() { return L.hasViewPermission() && location.protocol === 'https:'; },
-	message: function(text, error) { ui.addNotification(null, E('p', {}, text), error ? 'error' : 'info'); },
+	message: function(text, error) { ui.addNotification(null, E('p', {}, [text]), error ? 'error' : 'info'); },
 	busy: function(value) {
 		this.pending = value;
 		this.buttons.forEach(function(b) { b.disabled = value || !L.hasViewPermission() || (b.dataset.tls === '1' && location.protocol !== 'https:'); });
@@ -72,7 +72,7 @@ return view.extend({
 	},
 	confirm: function(title, text, task, success) {
 		if (this.pending) return;
-		ui.showModal(title, [E('p', {}, text), E('div', { 'class': 'right' }, [
+		ui.showModal(title, [E('p', {}, [text]), E('div', { 'class': 'right' }, [
 			E('button', { 'class': 'btn', 'click': ui.hideModal }, '取消'), ' ',
 			E('button', { 'class': 'btn cbi-button-action', 'click': L.bind(function() { ui.hideModal(); this.perform(task, success); }, this) }, '确认')
 		])]);
@@ -86,8 +86,10 @@ return view.extend({
 		this.username = E('input', { 'type': 'text', 'class': 'cbi-input-text', 'autocomplete': 'off', 'value': settings.username || '' });
 		this.domain = E('input', { 'type': 'text', 'class': 'cbi-input-text', 'autocomplete': 'off', 'value': settings.domain || '' });
 		this.password = E('input', { 'type': 'password', 'class': 'cbi-input-password', 'autocomplete': 'new-password', 'value': '', 'placeholder': settings.password_set ? '已设置；留空保留原密码' : '请输入认证密码' });
-		this.autostart = E('input', { 'type': 'checkbox', 'checked': !!settings.autostart });
-		this.reconnect = E('input', { 'type': 'checkbox', 'checked': !!settings.reconnect });
+		this.autostart = E('input', { 'type': 'checkbox' });
+		this.autostart.checked = !!settings.autostart;
+		this.reconnect = E('input', { 'type': 'checkbox' });
+		this.reconnect.checked = !!settings.reconnect;
 		[this.username, this.domain, this.password, this.autostart, this.reconnect].forEach(L.bind(function(input) { input.disabled = !this.writable(); }, this));
 		this.statusBox = E('div', { 'class': 'cbi-section' }, '读取状态中…');
 		var save = this.button('保存凭据', L.bind(function() {

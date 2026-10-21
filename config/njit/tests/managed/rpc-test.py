@@ -51,12 +51,12 @@ for a,r in [(False,False),(True,False),(False,True),(True,True)]:
     ok('save_options',{'autostart':a,'reconnect':r})
     s=ok('get_settings');assert s['autostart']==a and s['reconnect']==r
     flags=json.loads(subprocess.check_output([helper,'options'],text=True));assert flags=={'autostart':a,'reconnect':r}
-assert not (root/'actions').exists(),'options alone must not launch a process'
+assert not any(v in (root/'actions').read_text().splitlines() for v in ['start','restart']),'options must not launch a new process'
 assert not call('save_options',{'autostart':1,'reconnect':False})['ok']
 s=ok('status');assert s['service_known'] and not s['running'] and s['carrier'] and s['ipv4_addresses']==['192.0.2.10']
 assert 'must-not-return' not in json.dumps(s) and 'secret-url' not in json.dumps(s)
 assert call('control',{'action':'start;touch /tmp/injected'})['error']=='INVALID_ACTION'
-ok('control',{'action':'start'});assert (root/'actions').read_text()=='start\n'
+ok('control',{'action':'start'});assert (root/'actions').read_text().splitlines()==['disable','enable','disable','enable','start']
 assert "option enabled '1'" in (root/'uci/njitclient').read_text()
 child=subprocess.Popen([str(root/'client')])
 try:

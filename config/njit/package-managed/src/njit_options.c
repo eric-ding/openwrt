@@ -2,6 +2,7 @@
 #include "njit_managed.h"
 #include <json-c/json.h>
 #include <errno.h>
+#include <ctype.h>
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -18,6 +19,9 @@ int njit_read_options(int *autostart,int *reconnect){
  char data[129];ssize_t n=read(fd,data,sizeof(data)-1);close(fd);if(n!=st.st_size)return -1;data[n]=0;
  struct json_tokener *tok=json_tokener_new();json_tokener_set_flags(tok,JSON_TOKENER_STRICT);
  json_object *o=json_tokener_parse_ex(tok,data,(int)n);int valid=json_tokener_get_error(tok)==json_tokener_success && json_object_is_type(o,json_type_object);
+ size_t consumed=json_tokener_get_parse_end(tok);
+ while(consumed<(size_t)n && isspace((unsigned char)data[consumed]))consumed++;
+ valid=valid && consumed==(size_t)n;
  json_tokener_free(tok);json_object *a=NULL,*r=NULL;
  if(valid)valid=json_object_object_length(o)==2 && json_object_object_get_ex(o,"autostart",&a) && json_object_object_get_ex(o,"reconnect",&r) && json_object_is_type(a,json_type_boolean) && json_object_is_type(r,json_type_boolean);
  if(valid){*autostart=json_object_get_boolean(a);*reconnect=json_object_get_boolean(r);}
