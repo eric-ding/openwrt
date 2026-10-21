@@ -1,0 +1,17 @@
+name: K3 OpenClash local cache checks
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          persist-credentials: false
+      - name: Shell syntax and isolated public-asset fixtures
+        run: |
+          sh -n scripts/openclash/core-cache.sh scripts/openclash/core-cache.init
+          sudo --preserve-env=GITHUB_ACTIONS unshare --net python3 scripts/openclash/test-cache.py
