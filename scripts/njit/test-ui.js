@@ -58,6 +58,10 @@ async function setup(protocol = 'https:', permission = true) {
  descendants(x.dialog()).find(n => n.tag === 'button' && n.children === '确认').attrs.click();
  await tick(); await tick();
  assert.deepEqual(x.calls.find(c => c.method === 'control').args, ['start']);
+ x.button('重新认证').attrs.click();
+ descendants(x.dialog()).find(n => n.tag === 'button' && n.children === '确认').attrs.click();
+ await tick(); await tick();
+ assert.deepEqual(x.calls.filter(c => c.method === 'control').map(c => c.args[0]), ['start', 'stop', 'start'], 'restart waits for verified stopped status before one start');
  const insecure = await setup('http:');
  assert.equal(insecure.page.password.disabled, true);
  assert.equal(insecure.button('开始认证').disabled, true);

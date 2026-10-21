@@ -164,12 +164,13 @@ static void save_options(json_object *args){
  if(!a || !r || !json_object_is_type(a,json_type_boolean) || !json_object_is_type(r,json_type_boolean)){failure("INVALID_INPUT");return;}
  int old_a,old_r;if(njit_read_options(&old_a,&old_r)){old_a=old_r=0;}
  int d=directory(NJIT_CONFIG_DIR,1,1);if(d<0){failure("SAVE_FAILED");return;}
+ /* Commit the boot link first; publish live retry flags only after that succeeds. */
+ if(service(json_object_get_boolean(a)?"enable":"disable")){close(d);failure("SAVE_FAILED");return;}
  char data[80];int n=snprintf(data,sizeof(data),"{\"autostart\":%s,\"reconnect\":%s}\n",json_object_get_boolean(a)?"true":"false",json_object_get_boolean(r)?"true":"false");
- if(atomic_write(d,"options.json",data,(size_t)n))failure("SAVE_FAILED");
- else if(service(json_object_get_boolean(a)?"enable":"disable")){
-  n=snprintf(data,sizeof(data),"{\"autostart\":%s,\"reconnect\":%s}\n",old_a?"true":"false",old_r?"true":"false");
-  atomic_write(d,"options.json",data,(size_t)n);failure("SAVE_FAILED");
+ if(atomic_write(d,"options.json",data,(size_t)n)){
+  service(old_a?"enable":"disable");failure("SAVE_FAILED");
  }
+ (void)old_r;
  close(d);
 }
 static void clear(void){
@@ -183,12 +184,11 @@ static void clear(void){
 static void control(json_object *args){
  json_object *v=get(args,"action");if(!valid_text(v,7,0)){failure("INVALID_ACTION");return;}
  const char *a=json_object_get_string(v);
- if(strcmp(a,"start") && strcmp(a,"stop") && strcmp(a,"restart")){failure("INVALID_ACTION");return;}
+ if(strcmp(a,"start") && strcmp(a,"stop")){failure("INVALID_ACTION");return;}
  int running;pid_t pid;if(service_status(&running,&pid)){failure("SERVICE_UNAVAILABLE");return;}
- if(!strcmp(a,"stop") || !strcmp(a,"restart")){
+ if(!strcmp(a,"stop")){
   if(enable(0) || service("stop")){failure("CONTROL_FAILED");return;}
-  if(!strcmp(a,"stop"))return;
-  if(service_status(&running,&pid) || running){failure("WAIT_FOR_STOP");return;}
+  return;
  }
  if(!strcmp(a,"start") && running)return;
  struct njit_credentials c;if(njit_read_credentials(NJIT_CREDENTIALS,&c)){failure("CONFIG_REQUIRED");return;}njit_erase(&c,sizeof(c));

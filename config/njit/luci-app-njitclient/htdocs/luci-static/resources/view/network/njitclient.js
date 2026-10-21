@@ -70,6 +70,18 @@ return view.extend({
 			.catch(L.bind(function(e) { this.message(e.message || '操作失败', true); }, this))
 			.finally(L.bind(function() { this.password.value = ''; this.busy(false); return this.refresh(); }, this));
 	},
+	restartClient: function() {
+		var remaining = 20;
+		function waitStopped() {
+			return getStatus().then(checked).then(function(s) {
+				if (!s.service_known) throw new Error('无法确认停止状态，已取消重新认证。');
+				if (!s.running) return control('start');
+				if (--remaining <= 0) throw new Error('停止尚未完成，请检查状态后手动开始认证。');
+				return new Promise(function(resolve) { setTimeout(resolve, 500); }).then(waitStopped);
+			});
+		}
+		return control('stop').then(checked).then(waitStopped);
+	},
 	confirm: function(title, text, task, success) {
 		if (this.pending) return;
 		ui.showModal(title, [E('p', {}, [text]), E('div', { 'class': 'right' }, [
@@ -108,8 +120,8 @@ return view.extend({
 		}, this), true);
 		var start = this.button('开始认证', L.bind(function() { this.confirm('开始认证', '请确认 WAN 已接入需要认证的真实网络。此操作会发送认证报文，不应用于临时管理网络。', function() { return control('start'); }, '已提交开始请求，请查看认证事件和 WAN 地址。'); }, this), true);
 		var stop = this.button('停止认证', L.bind(function() { this.perform(function() { return control('stop'); }, '已提交停止请求，请核对状态。'); }, this), false);
-		var restart = this.button('重新认证', L.bind(function() { this.confirm('重新认证', '将停止当前认证并重新发起认证；仅对 WAN 认证服务操作。', function() { return control('restart'); }, '已提交重新认证请求，请核对状态。'); }, this), true);
-		var clear = this.button('清除认证凭据', L.bind(function() { this.confirm('清除认证凭据', '需先停止认证。确认后删除本机保存的账号、域和密码，自动认证选项保留。', function() { return clearCredentials(); }, '凭据已清除；再次认证前需重新保存。'); }, this), true);
+		var restart = this.button('重新认证', L.bind(function() { this.confirm('重新认证', '将停止当前认证并重新发起认证；仅对 WAN 认证服务操作。', L.bind(this.restartClient, this), '已提交重新认证请求，请核对状态。'); }, this), true);
+		var clear = this.button('清除认证凭据', L.bind(function() { this.confirm('清除认证凭据', '需先停止认证。确认后删除本机保存的账号、域和密码，自动认证选项保留。', L.bind(function() { return clearCredentials().then(checked).then(L.bind(function(reply) { this.username.value = ''; this.domain.value = ''; this.password.placeholder = '请输入认证密码'; return reply; }, this)); }, this), '凭据已清除；再次认证前需重新保存。'); }, this), true);
 		this.busy(false);
 		poll.add(L.bind(this.refresh, this), 5);
 		this.refresh();

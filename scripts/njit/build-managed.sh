@@ -57,6 +57,21 @@ status=$?
 set -e
 test "$status" = 77
 grep -q 'root required' "$artifact/nonroot-check.txt"
+# Verify the ARM RPC binary too; root guard must execute after resolving libraries.
+"$tc/bin/arm-openwrt-linux-muslgnueabi-readelf" -h -d "$artifact/payload/usr/libexec/rpcd/njitclient" > "$artifact/rpc-elf.txt"
+set +e
+timeout 20 qemu-arm -cpu cortex-a9 -L "$tc" -E LD_LIBRARY_PATH="$target/usr/lib" "$artifact/payload/usr/libexec/rpcd/njitclient" list > "$artifact/rpc-nonroot-check.txt" 2>&1
+status=$?
+set -e
+test "$status" = 77
+ui_package=$(find "$artifact" -maxdepth 1 -name 'luci-app-njitclient-*.apk' -print -quit)
+test -n "$ui_package"
+mkdir -p "$artifact/ui-payload"
+"$PWD/staging_dir/host/bin/apk" extract --allow-untrusted --no-chown --destination "$artifact/ui-payload" "$ui_package"
+cmp "$root/config/njit/luci-app-njitclient/htdocs/luci-static/resources/view/network/njitclient.js" "$artifact/ui-payload/www/luci-static/resources/view/network/njitclient.js"
+cmp "$root/config/njit/luci-app-njitclient/root/usr/share/rpcd/acl.d/luci-app-njitclient.json" "$artifact/ui-payload/usr/share/rpcd/acl.d/luci-app-njitclient.json"
+cmp "$root/config/njit/luci-app-njitclient/root/usr/share/luci/menu.d/luci-app-njitclient.json" "$artifact/ui-payload/usr/share/luci/menu.d/luci-app-njitclient.json"
+printf 'source_commit=%s\nrun_id=%s\nbase=OpenWrt-25.12.6-bcm53xx/generic\n' "$GITHUB_SHA" "$GITHUB_RUN_ID" > "$artifact/build-inputs.txt"
 cd "$root/build/njit-managed-artifacts"
 compgen -G '*.apk' >/dev/null
 sha256sum *.apk > SHA256SUMS
