@@ -1,0 +1,9 @@
+{
+  "openwrt_tag": "v25.12.6",
+  "openwrt_commit": "64900e756efa667774214f9c6b17c113222e01f7",
+  "archive_url": "https://codeload.github.com/openwrt/openwrt/tar.gz/refs/tags/v25.12.6",
+  "archive_sha256": "f5ff8258572a82df960470608ceb025655a42bc94b8e7e2a77a4373db46263d9",
+  "source_date_epoch": 1792273538,
+  "njit_commit": "dd28c17f24275bbbf4c44504b832c0f1e6b9ae40",
+  "njit_archive_sha256": "e5a87e95803df0cf1e5e7662d68e4a29346f5f821098e06b0654c5bb41d39264"
+}
