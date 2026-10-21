@@ -54,7 +54,8 @@ int njit_read_credentials(const char *path, struct njit_credentials *out) {
     if(u+(g?g+1:0)>88) goto end;
     memcpy(out->username,username,u+1);
     if(g){out->username[u]='@';memcpy(out->username+u+1,domain,g+1);}
-    strcpy(out->password,password);ok=0;
+    strcpy(out->password,password);
+    strcpy(out->account,username);strcpy(out->domain,domain);ok=0;
 end:
     if(fd>=0) close(fd);
     if(d>=0)close(d);

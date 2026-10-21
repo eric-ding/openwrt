@@ -21,7 +21,12 @@ int main(int argc,char **argv){
         fputs("njit: invalid private configuration\n",stderr);return 78;
     }
     if(njit_runtime_init()){njit_erase(&config,sizeof(config));fputs("njit: runtime unavailable or already running\n",stderr);return 73;}
-    int result=Authentication(config.username,config.password,argv[4]);
+    int result=0;
+    while(!njit_stopping()){
+        if(njit_wait_link())break;
+        result=Authentication(config.username,config.password,argv[4]);
+        if(njit_stopping() || njit_retry_pause())break;
+    }
     njit_erase(&config,sizeof(config));njit_runtime_close();
     return result;
 }

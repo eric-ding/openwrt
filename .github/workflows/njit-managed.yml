@@ -17,11 +17,13 @@ jobs:
       - name: Install cloud build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential gawk gettext git libncurses-dev libssl-dev python3 python3-setuptools rsync unzip zlib1g-dev curl ca-certificates zstd file autoconf automake libtool pkg-config flex bison libpcap-dev qemu-user
+          sudo apt-get install -y build-essential gawk gettext git libncurses-dev libssl-dev python3 python3-setuptools rsync unzip zlib1g-dev curl ca-certificates zstd file autoconf automake libtool pkg-config flex bison libpcap-dev libjson-c-dev qemu-user nodejs
       - name: Offline credential, frame and runtime tests
         run: |
           bash scripts/njit/test-managed.sh
           bash scripts/njit/test-service.sh
+          bash scripts/njit/test-rpc.sh
+          node scripts/njit/test-ui.js
       - name: Build ARM package with pinned OpenWrt SDK
         run: bash scripts/njit/build-managed.sh
       - name: Upload experimental package

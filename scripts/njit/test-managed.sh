@@ -10,7 +10,7 @@ tests=$root/config/njit/tests/managed
 flags=(-std=c11 -Wall -Wextra -Werror -g -O1 -fsanitize=address,undefined -fno-omit-frame-pointer -I "$src")
 cc "${flags[@]}" "$tests/credentials-test.c" "$src/njit_credentials.c" -o "$out/credentials-test"
 cc "${flags[@]}" "$tests/frames-test.c" "$src/njit_frames.c" -o "$out/frames-test"
-cc "${flags[@]}" '-DNJIT_RUNDIR="/tmp/njit-runtime-test"' "$tests/runtime-test.c" "$src/njit_runtime.c" -o "$out/runtime-test"
+cc "${flags[@]}" '-DNJIT_RUNDIR="/tmp/njit-runtime-test"' "$tests/runtime-test.c" "$src/njit_runtime.c" "$src/njit_options.c" -ljson-c -o "$out/runtime-test"
 sudo unshare --net "$out/credentials-test"
 "$out/frames-test"
 sudo unshare --net "$out/runtime-test"

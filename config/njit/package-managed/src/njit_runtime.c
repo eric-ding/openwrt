@@ -17,7 +17,7 @@ static void stop_signal(int sig){(void)sig;stopping=1;}
 int njit_stopping(void){return stopping!=0;}
 static int permitted_event(const char *s){
     static const char *const names[]={"starting","authenticating","authenticated","authentication_failed",
-        "credentials_rejected","waiting_retry","interface_error","stopped"};
+        "credentials_rejected","waiting_retry","interface_error","stopped","waiting_link","manual_required"};
     for(size_t i=0;i<sizeof(names)/sizeof(*names);i++)if(!strcmp(s,names[i]))return 1;
     return 0;
 }
@@ -50,11 +50,36 @@ int njit_runtime_init(void){
     if(sigaction(SIGTERM,&sa,0)||sigaction(SIGINT,&sa,0))return -1;
     njit_event("starting");return 0;
 }
+#ifndef NJIT_CARRIER
+#define NJIT_CARRIER "/sys/class/net/wan/carrier"
+#endif
+int njit_carrier(void){
+    int fd=open(NJIT_CARRIER,O_RDONLY|O_CLOEXEC);if(fd<0)return -1;
+    char c=0;ssize_t n=read(fd,&c,1);close(fd);
+    return n==1 && c=='1'?1:(n==1 && c=='0'?0:-1);
+}
+static int manual_pause(void){
+    njit_event("manual_required");
+    while(!stopping && !njit_can_reconnect())sleep(1);
+    return stopping?-1:0;
+}
+int njit_wait_link(void){
+    while(!stopping && njit_carrier()==0){
+        njit_event("waiting_link");
+        if(!njit_can_reconnect() && manual_pause())return -1;
+        sleep(1);
+    }
+    return stopping?-1:0;
+}
 int njit_retry_pause(void){
+    if(!njit_can_reconnect())return manual_pause();
     unsigned delay=5U << (retries<6?retries++:6);
     if(delay>300)delay=300;
     njit_event("waiting_retry");
-    while(delay-- && !stopping)sleep(1);
+    while(delay-- && !stopping){
+        if(!njit_can_reconnect())return manual_pause();
+        sleep(1);
+    }
     return stopping?-1:0;
 }
 void njit_wait_for_manual_retry(void){

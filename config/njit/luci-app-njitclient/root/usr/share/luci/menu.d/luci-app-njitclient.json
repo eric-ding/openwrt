@@ -1,0 +1,8 @@
+{
+  "admin/network/njitclient": {
+    "title": "njit 有线认证",
+    "order": 65,
+    "action": { "type": "view", "path": "network/njitclient" },
+    "depends": { "acl": ["luci-app-njitclient"] }
+  }
+}

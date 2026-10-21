@@ -1,6 +1,6 @@
 --- a/src/auth.c
 +++ b/src/auth.c
-@@ -23,7 +23,34 @@
+@@ -23,7 +23,35 @@
  #include <net/if.h>
  #include <arpa/inet.h>
  
@@ -12,6 +12,7 @@
 +static int NjitNextFrame(pcap_t *handle, struct pcap_pkthdr **header, const uint8_t **packet)
 +{
 +    if(njit_stopping())return -2;
++    if(njit_carrier()==0){njit_event("waiting_link");return -2;}
 +    int result=pcap_next_ex(handle,header,packet);
 +    if(result<0){njit_event("interface_error");return -2;}
 +    if(result==1 && (!*header || !njit_frame_valid(*packet,(*header)->caplen)))return 0;
@@ -36,7 +37,7 @@
  
  // 自定义常量
  typedef enum {REQUEST=1, RESPONSE=2, SUCCESS=3, FAILURE=4, H3CDATA=10} EAP_Code;
-@@ -100,9 +127,12 @@
+@@ -100,9 +128,12 @@
  	/* 打开适配器(网卡) */
  	adhandle = pcap_open_live(DeviceName,65536,1,DefaultTimeout,errbuf);
  	if (adhandle==NULL) {
@@ -51,7 +52,7 @@
  
  	/* 查询本机MAC地址 */
  	GetMacFromDevice(MAC, DeviceName);
-@@ -111,6 +141,8 @@
+@@ -111,6 +142,8 @@
      srand((unsigned)time(NULL));
  
  	START_AUTHENTICATION:
@@ -60,7 +61,7 @@
  	{
  		/*
  		 * 设置过滤器：
-@@ -119,8 +151,7 @@
+@@ -119,8 +152,7 @@
  		 */
  		sprintf(FilterStr, "(ether proto 0x888e) and (ether dst host %02x:%02x:%02x:%02x:%02x:%02x)",
  								MAC[0],MAC[1],MAC[2],MAC[3],MAC[4],MAC[5]);
@@ -70,7 +71,7 @@
  		int i;
  		int retcode;
  		struct pcap_pkthdr *header = NULL;
-@@ -141,7 +172,8 @@
+@@ -141,7 +173,8 @@
  	bool serverIsFound = false;
  	while (!serverIsFound)
  	{
@@ -80,7 +81,7 @@
  		if (retcode==1 && (EAP_Code)captured[18]==REQUEST)
  			serverIsFound = true;
  		else
-@@ -168,10 +200,14 @@
+@@ -168,10 +201,14 @@
  		SendResponseNotification(adhandle, captured, ethhdr);
  		DPRINTF("    Client: Response Notification.\n");
  
@@ -99,7 +100,7 @@
  	}
  
  	// 分情况应答下一个包
-@@ -195,15 +231,15 @@
+@@ -195,15 +232,15 @@
  	// 重设过滤器，只捕获华为802.1X认证设备发来的包（包括多播Request Identity / Request AVAILABLE）
  	sprintf(FilterStr, "(ether proto 0x888e) and (ether src host %02x:%02x:%02x:%02x:%02x:%02x)",
  		captured[6],captured[7],captured[8],captured[9],captured[10],captured[11]);
@@ -118,7 +119,7 @@
  			//DPRINTF("."); // 若捕获失败，则等1秒后重试
  			sleep(1);     // 直到成功捕获到一个数据包后再跳出
  			// NOTE: 这里没有检查网线是否已被拔下或插口接触不良
-@@ -239,51 +275,20 @@
+@@ -239,51 +276,20 @@
  			 default:
  				DPRINTF("[%d] Server: Request (type:%d)!\n", (EAP_ID)captured[19], (EAP_Type)captured[22]);
  				DPRINTF("Error! Unexpected request type\n");
@@ -179,7 +180,7 @@
  		}
  		else if ((EAP_Code)captured[18] == 0x0A)
  		{
-@@ -303,7 +308,9 @@
+@@ -303,7 +309,9 @@
  		}
  	}
  }
@@ -190,7 +191,7 @@
  }
  
  
-@@ -364,7 +371,7 @@
+@@ -364,7 +372,7 @@
  int i;
  uint16_t eaplen;
  int usernamelen;
@@ -199,7 +200,7 @@
  
  assert((EAP_Code)request[18] == REQUEST);
  assert((EAP_Type)request[22] == AVAILABLE);
-@@ -478,7 +485,7 @@
+@@ -478,7 +486,7 @@
  
  void SendFirstResponseIdentity(pcap_t *adhandle, const uint8_t request[], const uint8_t ethhdr[], const uint8_t ip[4], const char username[])
  {
@@ -208,7 +209,7 @@
  size_t i;
  uint16_t eaplen;
  int usernamelen;
-@@ -540,7 +547,7 @@
+@@ -540,7 +548,7 @@
  uint16_t eaplen;
  size_t   usernamelen;
  size_t   packetlen;
@@ -219,13 +220,14 @@
  assert((EAP_Type)request[22] == MD5);
 --- a/src/Makefile.am
 +++ b/src/Makefile.am
-@@ -4,6 +4,9 @@
+@@ -4,6 +4,10 @@
  		$(NULL)
  client_SOURCES = \
  		main.c \
 +		njit_credentials.c \
 +		njit_frames.c \
 +		njit_runtime.c \
++		njit_options.c \
  		auth.c \
  		ip.c   \
  		fillmd5-libcrypto.c \

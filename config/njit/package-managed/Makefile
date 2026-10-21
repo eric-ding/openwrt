@@ -3,7 +3,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=njit8021xclient
 PKG_VERSION:=2018.11.24~dd28c17f
-PKG_RELEASE:=3
+PKG_RELEASE:=4
 PKG_SOURCE_VERSION:=dd28c17f24275bbbf4c44504b832c0f1e6b9ae40
 PKG_SOURCE:=$(PKG_NAME)-$(PKG_SOURCE_VERSION).tar.gz
 PKG_SOURCE_URL:=https://codeload.github.com/bitdust/njit8021xclient/tar.gz/$(PKG_SOURCE_VERSION)?
@@ -18,24 +18,30 @@ define Package/njit8021xclient
   CATEGORY:=Network
   TITLE:=NJIT managed backend experimental build
   URL:=https://github.com/bitdust/njit8021xclient
-  DEPENDS:=+libpcap +libopenssl
+  DEPENDS:=+libpcap +libopenssl +libjson-c
 endef
 
 CONFIGURE_ARGS += --program-prefix=njit-
 # Upstream detects libcrypto but omits its linker flags in client_LDADD.
-MAKE_FLAGS += 'client_LDADD=$$(LBL_LIBS) $$(libcrypto_LIBS)'
+MAKE_FLAGS += 'client_LDADD=$$(LBL_LIBS) $$(libcrypto_LIBS) -ljson-c'
 
 define Build/Prepare
 	$(call Build/Prepare/Default)
 	$(CP) ./src/* $(PKG_BUILD_DIR)/src/
 endef
 
+define Build/Compile
+	$(call Build/Compile/Default)
+	$(TARGET_CC) $(TARGET_CFLAGS) $(TARGET_CPPFLAGS) -I$(PKG_BUILD_DIR)/src $(PKG_BUILD_DIR)/src/njit_rpc.c $(PKG_BUILD_DIR)/src/njit_credentials.c $(PKG_BUILD_DIR)/src/njit_options.c $(TARGET_LDFLAGS) -ljson-c -o $(PKG_BUILD_DIR)/njit-rpc
+endef
+
 define Package/njit8021xclient/install
 	$(INSTALL_DIR) $(1)/usr/sbin
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/src/client $(1)/usr/sbin/njit-client
-	$(INSTALL_DIR) $(1)/etc/init.d $(1)/etc/config
+	$(INSTALL_DIR) $(1)/etc/init.d $(1)/etc/config $(1)/usr/libexec/rpcd
 	$(INSTALL_BIN) ./files/njitclient.init $(1)/etc/init.d/njitclient
 	$(INSTALL_CONF) ./files/njitclient.config $(1)/etc/config/njitclient
+	$(INSTALL_BIN) $(PKG_BUILD_DIR)/njit-rpc $(1)/usr/libexec/rpcd/njitclient
 endef
 
 $(eval $(call BuildPackage,njit8021xclient))

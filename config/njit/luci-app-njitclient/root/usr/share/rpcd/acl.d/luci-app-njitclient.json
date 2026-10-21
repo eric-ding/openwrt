@@ -1,0 +1,11 @@
+{
+  "luci-app-njitclient": {
+    "description": "Read NJIT settings and control the managed WAN client",
+    "read": { "ubus": { "njitclient": ["status", "get_settings"] } },
+    "write": { "ubus": { "njitclient": ["save", "clear", "save_options", "control"] } }
+  },
+  "njitclient-status": {
+    "description": "Read NJIT status without account information",
+    "read": { "ubus": { "njitclient": ["status"] } }
+  }
+}
