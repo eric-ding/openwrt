@@ -36,7 +36,7 @@
  
  // 自定义常量
  typedef enum {REQUEST=1, RESPONSE=2, SUCCESS=3, FAILURE=4, H3CDATA=10} EAP_Code;
-@@ -100,9 +127,11 @@
+@@ -100,9 +127,12 @@
  	/* 打开适配器(网卡) */
  	adhandle = pcap_open_live(DeviceName,65536,1,DefaultTimeout,errbuf);
  	if (adhandle==NULL) {
@@ -46,11 +46,12 @@
 +        return 1;
  	}
 +
++    if(pcap_setnonblock(adhandle,1,errbuf)<0){njit_event("interface_error");pcap_close(adhandle);return 1;}
 +    if(pcap_datalink(adhandle)!=DLT_EN10MB){njit_event("interface_error");pcap_close(adhandle);return 1;}
  
  	/* 查询本机MAC地址 */
  	GetMacFromDevice(MAC, DeviceName);
-@@ -111,6 +140,8 @@
+@@ -111,6 +141,8 @@
      srand((unsigned)time(NULL));
  
  	START_AUTHENTICATION:
@@ -59,7 +60,7 @@
  	{
  		/*
  		 * 设置过滤器：
-@@ -119,8 +150,7 @@
+@@ -119,8 +151,7 @@
  		 */
  		sprintf(FilterStr, "(ether proto 0x888e) and (ether dst host %02x:%02x:%02x:%02x:%02x:%02x)",
  								MAC[0],MAC[1],MAC[2],MAC[3],MAC[4],MAC[5]);
@@ -69,7 +70,7 @@
  		int i;
  		int retcode;
  		struct pcap_pkthdr *header = NULL;
-@@ -141,7 +171,8 @@
+@@ -141,7 +172,8 @@
  	bool serverIsFound = false;
  	while (!serverIsFound)
  	{
@@ -79,23 +80,26 @@
  		if (retcode==1 && (EAP_Code)captured[18]==REQUEST)
  			serverIsFound = true;
  		else
-@@ -169,9 +200,12 @@
+@@ -168,10 +200,14 @@
+ 		SendResponseNotification(adhandle, captured, ethhdr);
  		DPRINTF("    Client: Response Notification.\n");
  
- 		// 继续接收下一个Request包
+-		// 继续接收下一个Request包
 -		retcode = pcap_next_ex(adhandle, &header, &captured);
 -		assert(retcode==1);
 -		assert((EAP_Code)captured[18] == REQUEST);
-+		retcode = NjitNextFrame(adhandle, &header, &captured);
-+        if(retcode<0)goto DONE;
-+        if(retcode!=1 || captured[18]!=REQUEST){
-+            if(njit_retry_pause())goto DONE;
-+            goto START_AUTHENTICATION;
++        /* Nonblocking capture keeps stop responsive on a silent link. */
++        for(unsigned wait=0;;wait++){
++            retcode=NjitNextFrame(adhandle,&header,&captured);
++            if(retcode<0)goto DONE;
++            if(retcode==1 && captured[18]==REQUEST)break;
++            if(wait>=4){if(njit_retry_pause())goto DONE;goto START_AUTHENTICATION;}
++            sleep(1);
 +        }
  	}
  
  	// 分情况应答下一个包
-@@ -195,15 +229,15 @@
+@@ -195,15 +231,15 @@
  	// 重设过滤器，只捕获华为802.1X认证设备发来的包（包括多播Request Identity / Request AVAILABLE）
  	sprintf(FilterStr, "(ether proto 0x888e) and (ether src host %02x:%02x:%02x:%02x:%02x:%02x)",
  		captured[6],captured[7],captured[8],captured[9],captured[10],captured[11]);
@@ -114,7 +118,7 @@
  			//DPRINTF("."); // 若捕获失败，则等1秒后重试
  			sleep(1);     // 直到成功捕获到一个数据包后再跳出
  			// NOTE: 这里没有检查网线是否已被拔下或插口接触不良
-@@ -239,51 +273,20 @@
+@@ -239,51 +275,20 @@
  			 default:
  				DPRINTF("[%d] Server: Request (type:%d)!\n", (EAP_ID)captured[19], (EAP_Type)captured[22]);
  				DPRINTF("Error! Unexpected request type\n");
@@ -175,7 +179,7 @@
  		}
  		else if ((EAP_Code)captured[18] == 0x0A)
  		{
-@@ -303,7 +306,9 @@
+@@ -303,7 +308,9 @@
  		}
  	}
  }
@@ -186,7 +190,7 @@
  }
  
  
-@@ -364,7 +369,7 @@
+@@ -364,7 +371,7 @@
  int i;
  uint16_t eaplen;
  int usernamelen;
@@ -195,7 +199,7 @@
  
  assert((EAP_Code)request[18] == REQUEST);
  assert((EAP_Type)request[22] == AVAILABLE);
-@@ -478,7 +483,7 @@
+@@ -478,7 +485,7 @@
  
  void SendFirstResponseIdentity(pcap_t *adhandle, const uint8_t request[], const uint8_t ethhdr[], const uint8_t ip[4], const char username[])
  {
@@ -204,7 +208,7 @@
  size_t i;
  uint16_t eaplen;
  int usernamelen;
-@@ -540,7 +545,7 @@
+@@ -540,7 +547,7 @@
  uint16_t eaplen;
  size_t   usernamelen;
  size_t   packetlen;
