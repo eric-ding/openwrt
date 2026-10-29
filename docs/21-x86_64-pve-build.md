@@ -12,7 +12,7 @@
 
 ## 构建
 
-工作流 `.github/workflows/x86_64-openwrt.yml` 只在 `feature/x86_64-openclash` 分支的相关输入变化时自动运行，也保留手动触发入口。它在 GitHub Actions 中构建，不使用本地 SDK。
+工作流 `.github/workflows/x86_64-openwrt.yml` 在 `feature/x86_64-openclash` 分支相关输入变化或面向 `main` 的 PR 更新时运行。GitHub 要求 `workflow_dispatch` 工作流先存在于默认分支，因此本次首次构建通过 PR 触发；合并后才可从 Actions 页面手动触发。它在 GitHub Actions 中构建，不使用本地 SDK。
 
 工作流固定 OpenWrt 25.12.6 源码、OpenClash v0.48.002、OpenWrt 25.12 packages/LuCI feed 提交，并校验 OpenWrt 源码 SHA256。产物校验会检查 BIOS MBR 签名、镜像类型、OpenClash 版本、VirtIO/代理依赖及未打包 Mihomo 核心，并生成 SHA256。
 
