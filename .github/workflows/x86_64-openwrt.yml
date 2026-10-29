@@ -1,9 +1,16 @@
 name: OpenWrt x86_64 PVE side router
-run-name: Build OpenWrt 25.12.6 x86_64 with OpenClash
 on:
   push:
     branches:
       - feature/x86_64-openclash
+    paths:
+      - '.github/workflows/x86_64-openwrt.yml'
+      - 'config/x86_64/**'
+      - 'scripts/firmware/prepare-x86_64.sh'
+      - 'scripts/firmware/verify-x86_64.py'
+  pull_request:
+    branches:
+      - main
     paths:
       - '.github/workflows/x86_64-openwrt.yml'
       - 'config/x86_64/**'
