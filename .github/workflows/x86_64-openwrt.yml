@@ -1,4 +1,5 @@
 name: OpenWrt x86_64 PVE side router
+run-name: Build OpenWrt 25.12.6 x86_64 with OpenClash
 on:
   push:
     branches:
