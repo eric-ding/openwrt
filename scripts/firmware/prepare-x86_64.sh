@@ -51,7 +51,8 @@ for feed in packages luci; do
   git -C "feeds/$feed" checkout --quiet --detach FETCH_HEAD
   test "$(git -C "feeds/$feed" rev-parse HEAD)" = "$revision"
 done
-./scripts/feeds install -a
+./scripts/feeds install -p packages bash curl ruby unzip
+./scripts/feeds install -p luci luci luci-compat luci-i18n-base-zh-cn
 cp "$config" .config
 make defconfig 2>&1 | tee x86_64-defconfig.log
 
@@ -67,14 +68,19 @@ required = {
     'CONFIG_TARGET_ROOTFS_PARTSIZE=1024',
     'CONFIG_GRUB_IMAGES=y',
     'CONFIG_PACKAGE_luci-app-openclash=y',
-    'CONFIG_PACKAGE_kmod-virtio-net=y',
-    'CONFIG_PACKAGE_kmod-virtio-scsi=y',
 }
 missing = sorted(required - config)
 if missing:
     raise SystemExit('Required x86_64 selections missing: ' + ', '.join(missing))
 if 'CONFIG_GRUB_EFI_IMAGES=y' in config:
     raise SystemExit('UEFI image unexpectedly enabled for SeaBIOS build')
+kernel_config = Path(sys.argv[1]).parent / 'target/linux/x86/64/config-6.12'
+kernel = set(kernel_config.read_text().splitlines())
+virtio = {'CONFIG_VIRTIO=y', 'CONFIG_VIRTIO_PCI=y', 'CONFIG_VIRTIO_BLK=y',
+          'CONFIG_VIRTIO_NET=y', 'CONFIG_SCSI_VIRTIO=y'}
+missing_kernel = sorted(virtio - kernel)
+if missing_kernel:
+    raise SystemExit('OpenWrt x86_64 target is missing built-in PVE VirtIO drivers: ' + ', '.join(missing_kernel))
 PY
 
 ./scripts/diffconfig.sh > x86_64-diffconfig.txt

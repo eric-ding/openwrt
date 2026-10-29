@@ -19,11 +19,21 @@ manifest = manifests[0].read_text().splitlines()
 installed = {line.split(' - ',1)[0]: line.split(' - ',1)[1] for line in manifest if ' - ' in line}
 if installed.get('luci-app-openclash') != '0.48.002':
     raise SystemExit('OpenClash v0.48.002 is missing from the image manifest')
-for package in ('kmod-virtio-net','kmod-virtio-scsi','kmod-tun','kmod-nft-tproxy'):
+for package in ('dnsmasq-full','bash','curl','ca-bundle','ip-full','ruby','ruby-yaml',
+                'kmod-tun','kmod-nft-tproxy','luci-compat','unzip'):
     if package not in installed:
-        raise SystemExit(f'Required PVE/OpenClash package missing: {package}')
+        raise SystemExit(f'Required OpenClash package dependency missing: {package}')
 if any('mihomo' in name.lower() or name.lower() == 'clash' for name in installed):
     raise SystemExit('A proxy core was unexpectedly bundled in the image')
+kernel_configs = list(work.glob('build_dir/target-*/linux-x86_64/linux-*/.config'))
+if len(kernel_configs) != 1:
+    raise SystemExit(f'Expected one built x86_64 kernel config, found {len(kernel_configs)}')
+kernel = set(kernel_configs[0].read_text().splitlines())
+virtio = ('CONFIG_VIRTIO=y','CONFIG_VIRTIO_PCI=y','CONFIG_VIRTIO_BLK=y',
+          'CONFIG_VIRTIO_NET=y','CONFIG_SCSI_VIRTIO=y')
+missing_kernel = [item for item in virtio if item not in kernel]
+if missing_kernel:
+    raise SystemExit('Built kernel lacks PVE VirtIO drivers: ' + ', '.join(missing_kernel))
 with gzip.open(images[0], 'rb') as stream:
     header = stream.read(512)
 if len(header) != 512 or header[510:512] != b'\x55\xaa':
@@ -41,8 +51,10 @@ summary = {
     'filesystem': 'ext4',
     'openclash': installed['luci-app-openclash'],
     'mihomo_core_bundled': False,
-    'pve_virtio_net': installed['kmod-virtio-net'],
-    'pve_virtio_scsi': installed['kmod-virtio-scsi'],
+    'pve_virtio_net': 'built into kernel',
+    'pve_virtio_blk': 'built into kernel',
+    'pve_virtio_scsi': 'built into kernel',
+    'pve_virtio_pci': 'built into kernel',
     'hardware_boot_test': 'not performed',
 }
 (output/'verification.json').write_text(json.dumps(summary, indent=2)+'\n')
